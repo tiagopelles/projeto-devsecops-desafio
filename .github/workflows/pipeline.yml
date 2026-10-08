@@ -1,0 +1,156 @@
+name: 🔐 Pipeline DevSecOps
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  # ────────────────────────────────────────────────────────────────
+  # JOB 1 — Build, segurança e assinatura do artefato
+  # ────────────────────────────────────────────────────────────────
+  build:
+    name: Build, Segurança e Assinatura
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout do Código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ⚠️ Assim que remover segredos do código, passar pra cá
+      # Obs: não é uma alternativa tão robusta quanto um Vault por exemplo, mas já que o segredo estava em código....
+      # Dicas para cada variável:
+      #   - adicione um env 
+      #   - crie um segredo correspondente no github
+      #   - insira uma referência para encontrá-la no código (exemplo CHAVE = "__CHAVE__")
+      #   - injete a variável na referência, usando um sed 
+      - name: 🔐 Inserir Secrets no JavaScript
+        #env:
+          #VAR: ${{ secrets.VAR  }}
+        run: |
+          echo "Nenhum segredo inserido no código por enquanto"
+      #   sed -i "s|__VAR__|$VAR|g" src/script.js
+
+      - name: ⚙️ Build
+        run: |
+          echo "Verificando arquivos..."
+          ls src/
+          echo "Build OK!"
+
+      # ❌ PASSO A IMPLEMENTAR — Secrets Scanning com Gitleaks
+      # Dica: use a action oficial "gitleaks/gitleaks-action@v2" e passe o
+      - name: 🔑 Secrets Scanning
+        run: echo "TODO - implemente o Secrets Scanning com Gitleaks aqui"
+
+      # ❌ PASSO A IMPLEMENTAR — SAST com Semgrep
+      # Dica: instale com "pip install semgrep" e rode
+      #   semgrep scan --config auto --config p/xss --error src/
+      - name: 🔍 SAST - Semgrep
+        run: echo "TODO - implemente o SAST com Semgrep aqui"
+
+      # ❌ PASSO A IMPLEMENTAR — SCA com Grype
+      # Dica: primeiro, gere o package-lock pelo npm:
+      #   npm install --package-lock-only --no-audit --no-fund
+      # Depois instale o Grype:
+      #   curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+      # E rode:
+      #   grype dir:. --fail-on medium
+      - name: 📦 SCA - Grype
+        run: echo "TODO - implemente o SCA com Grype aqui"
+
+      # ── Empacota o site em um artefato tar (formato que o Pages consome)
+      - name: 📦 Empacotar artefato do site
+        run: |
+          tar \
+            --dereference --hard-dereference \
+            -C src \
+            -cvf artifact.tar \
+            --exclude=.git --exclude=.github \
+            .
+
+      # ── Calcula o hash do artefato
+      - name: 🔢 Hash do artefato
+        run: |
+          digest=$(sha256sum artifact.tar | awk '{print $1}')
+          echo "$digest" > artifact.tar.sha256
+          echo "SHA256: $digest"
+
+      - name: ✍️ Instalar Cosign
+        uses: sigstore/cosign-installer@v3
+
+      # ❌ PASSO A IMPLEMENTAR — Assinatura via Cosign
+      # Este passo NÃO assina de verdade — ele gera um bundle falso, só para
+      # demonstração.
+      #
+      # Dica da assinatura real:
+      #   cosign sign-blob artifact.tar --bundle artifact.sigstore.json --yes
+      - name: ✍️ Assinar artefato
+        run: |
+          echo '{ "mock": "assinatura-invalida-para-demonstracao" }' > artifact.sigstore.json
+          echo "Assinatura MOCK gerada."
+
+      # ── Publica o artefato + bundle de assinatura para o próximo job
+      - name: ⬆️ Upload do artefato assinado
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-assinado
+          path: |
+            artifact.tar
+            artifact.sigstore.json
+            artifact.tar.sha256
+          retention-days: 1
+
+  # ────────────────────────────────────────────────────────────────
+  # JOB 2 — Verifica a assinatura e só então faz o deploy
+  # ────────────────────────────────────────────────────────────────
+  deploy:
+    name: Verificação e Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: ⬇️ Baixar o artefato assinado
+        uses: actions/download-artifact@v4
+        with:
+          name: site-assinado
+
+      - name: ✍️ Instalar Cosign
+        uses: sigstore/cosign-installer@v3
+
+      # ⚠️ Usa o Cosign para validar assinatura do artefato - descomentar após assinatura
+      # - name: 🔎 Verificar assinatura do artefato
+      #  run: |
+      #    cosign verify-blob artifact.tar \
+      #      --bundle artifact.sigstore.json \
+      #      --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/.*" \
+      #      --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+      #    echo "Assinatura válida — artefato íntegro e autêntico."
+
+      # Descompacta o site para publicar
+      - name: 📂 Extrair site verificado
+        run: |
+          mkdir -p site
+          tar -xvf artifact.tar -C site
+
+      - name: 🌐 Configurar GitHub Pages
+        uses: actions/configure-pages@v4
+
+      - name: 📤 Upload para Produção
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./site
+
+      # Realiza o deploy
+      - name: 🚀 Deploy em Produção
+        id: deployment
+        uses: actions/deploy-pages@v4
