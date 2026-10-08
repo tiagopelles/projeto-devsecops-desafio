@@ -51,11 +51,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # ❌ PASSO A IMPLEMENTAR — SAST com Semgrep
+      # SAST com Semgrep
       # Dica: instale com "pip install semgrep" e rode
       #   semgrep scan --config auto --config p/xss --error src/
       - name: 🔍 SAST - Semgrep
-        run: echo "TODO - implemente o SAST com Semgrep aqui"
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install semgrep
+
+          semgrep scan \
+          --config auto \
+          --config p/xss \
+          --error \
+          src/
 
       # ❌ PASSO A IMPLEMENTAR — SCA com Grype
       # Dica: primeiro, gere o package-lock pelo npm:
