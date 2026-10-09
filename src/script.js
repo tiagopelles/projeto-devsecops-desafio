@@ -1,5 +1,5 @@
 // Busca tarefas do "banco de dados"
-fetch('/api/task')
+fetch('db.json')
     .then(response => response.json())
     .then(data => {
         document.getElementById('db-status').innerText = data.status;
@@ -12,9 +12,9 @@ fetch('/api/task')
         });
     })
     .catch(err => {
-    document.getElementById('db-status').innerText =
-        'Erro ao consultar os dados.';
-    console.error(err);
+        document.getElementById('db-status').innerText =
+            'Erro ao consultar os dados.';
+        console.error(err);
     });
 
 // Adiciona nova tarefa na tela
