@@ -24,19 +24,8 @@ jobs:
         with:
           fetch-depth: 0
 
-      # ⚠️ Assim que remover segredos do código, passar pra cá
-      # Obs: não é uma alternativa tão robusta quanto um Vault por exemplo, mas já que o segredo estava em código....
-      # Dicas para cada variável:
-      #   - adicione um env 
-      #   - crie um segredo correspondente no github
-      #   - insira uma referência para encontrá-la no código (exemplo CHAVE = "__CHAVE__")
-      #   - injete a variável na referência, usando um sed 
-      - name: 🔐 Inserir Secrets no JavaScript
-        #env:
-          #VAR: ${{ secrets.VAR  }}
-        run: |
-          echo "Nenhum segredo inserido no código por enquanto"
-      #   sed -i "s|__VAR__|$VAR|g" src/script.js
+      # Não injete GitHub Secrets em src/script.js: este conteúdo é publicado
+      # como JavaScript público no GitHub Pages. Use secrets apenas no backend.
 
       - name: ⚙️ Build
         run: |
@@ -44,14 +33,14 @@ jobs:
           ls src/
           echo "Build OK!"
 
-      # Secrets Scanning com Gitleaks
+      # ❌ PASSO A IMPLEMENTAR — Secrets Scanning com Gitleaks
       # Dica: use a action oficial "gitleaks/gitleaks-action@v2" e passe o
       - name: 🔑 Secrets Scanning
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # SAST com Semgrep
+      # ❌ PASSO A IMPLEMENTAR — SAST com Semgrep
       # Dica: instale com "pip install semgrep" e rode
       #   semgrep scan --config auto --config p/xss --error src/
       - name: 🔍 SAST - Semgrep
@@ -73,7 +62,15 @@ jobs:
       # E rode:
       #   grype dir:. --fail-on medium
       - name: 📦 SCA - Grype
-        run: echo "TODO - implemente o SCA com Grype aqui"
+        run: |
+          echo "Gerando package-lock.json..."
+          npm install --package-lock-only --no-audit --no-fund
+
+          echo "Instalando Grype..."
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+
+          echo "Executando análise de dependências..."
+          grype dir:. --fail-on medium
 
       # ── Empacota o site em um artefato tar (formato que o Pages consome)
       - name: 📦 Empacotar artefato do site
@@ -103,8 +100,11 @@ jobs:
       #   cosign sign-blob artifact.tar --bundle artifact.sigstore.json --yes
       - name: ✍️ Assinar artefato
         run: |
-          echo '{ "mock": "assinatura-invalida-para-demonstracao" }' > artifact.sigstore.json
-          echo "Assinatura MOCK gerada."
+          cosign sign-blob artifact.tar \
+          --bundle artifact.sigstore.json \
+          --yes
+
+          echo "Artefato assinado com sucesso."
 
       # ── Publica o artefato + bundle de assinatura para o próximo job
       - name: ⬆️ Upload do artefato assinado
