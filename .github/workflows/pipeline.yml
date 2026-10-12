@@ -136,13 +136,13 @@ jobs:
         uses: sigstore/cosign-installer@v3
 
       # ⚠️ Usa o Cosign para validar assinatura do artefato - descomentar após assinatura
-      # - name: 🔎 Verificar assinatura do artefato
-      #  run: |
-      #    cosign verify-blob artifact.tar \
-      #      --bundle artifact.sigstore.json \
-      #      --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/.*" \
-      #      --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
-      #    echo "Assinatura válida — artefato íntegro e autêntico."
+      - name: 🔎 Verificar assinatura do artefato
+        run: |
+          cosign verify-blob artifact.tar \
+            --bundle artifact.sigstore.json \
+            --certificate-identity-regexp "^https://github.com/${{ github.repository }}/.github/workflows/.*" \
+            --certificate-oidc-issuer "https://token.actions.githubusercontent.com"
+          echo "Assinatura válida — artefato íntegro e autêntico."
 
       # Descompacta o site para publicar
       - name: 📂 Extrair site verificado
