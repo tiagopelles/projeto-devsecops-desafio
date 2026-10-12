@@ -24,23 +24,19 @@ jobs:
 
       # Não injete GitHub Secrets em src/script.js: este conteúdo é publicado
       # como JavaScript público no GitHub Pages. Use secrets apenas no backend.
-
       - name: ⚙️ Build
         run: |
           echo "Verificando arquivos..."
           ls src/
           echo "Build OK!"
 
-      # ❌ PASSO A IMPLEMENTAR — Secrets Scanning com Gitleaks
-      # Dica: use a action oficial "gitleaks/gitleaks-action@v2" e passe o
+      # Secrets Scanning com Gitleaks
       - name: 🔑 Secrets Scanning
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # ❌ PASSO A IMPLEMENTAR — SAST com Semgrep
-      # Dica: instale com "pip install semgrep" e rode
-      #   semgrep scan --config auto --config p/xss --error src/
+      # SAST com Semgrep
       - name: 🔍 SAST - Semgrep
         run: |
           python3 -m pip install --upgrade pip
@@ -52,13 +48,7 @@ jobs:
           --error \
           src/
 
-      # ❌ PASSO A IMPLEMENTAR — SCA com Grype
-      # Dica: primeiro, gere o package-lock pelo npm:
-      #   npm install --package-lock-only --no-audit --no-fund
-      # Depois instale o Grype:
-      #   curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
-      # E rode:
-      #   grype dir:. --fail-on medium
+      # SCA com Grype
       - name: 📦 SCA - Grype
         run: |
           echo "Gerando package-lock.json..."
@@ -90,12 +80,7 @@ jobs:
       - name: ✍️ Instalar Cosign
         uses: sigstore/cosign-installer@v3
 
-      # ❌ PASSO A IMPLEMENTAR — Assinatura via Cosign
-      # Este passo NÃO assina de verdade — ele gera um bundle falso, só para
-      # demonstração.
-      #
-      # Dica da assinatura real:
-      #   cosign sign-blob artifact.tar --bundle artifact.sigstore.json --yes
+      # Assinatura via Cosign
       - name: ✍️ Assinar artefato
         run: |
           cosign sign-blob artifact.tar \
@@ -135,7 +120,7 @@ jobs:
       - name: ✍️ Instalar Cosign
         uses: sigstore/cosign-installer@v3
 
-      # ⚠️ Usa o Cosign para validar assinatura do artefato - descomentar após assinatura
+      # ⚠️ Usa o Cosign para validar assinatura do artefato
       - name: 🔎 Verificar assinatura do artefato
         run: |
           cosign verify-blob artifact.tar \
